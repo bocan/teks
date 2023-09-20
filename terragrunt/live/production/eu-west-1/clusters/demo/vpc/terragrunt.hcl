@@ -5,7 +5,7 @@ include "root" {
 }
 
 terraform {
-  source = "github.com/terraform-aws-modules/terraform-aws-vpc?ref=v3.19.0"
+  source = "github.com/terraform-aws-modules/terraform-aws-vpc?ref=v5.1.2"
 }
 
 dependency "datasources" {
@@ -13,7 +13,9 @@ dependency "datasources" {
 }
 
 locals {
-  vpc_cidr = "10.42.0.0/16"
+  vpc_cidr     = "10.42.0.0/16"
+  vpc_name     = include.root.locals.full_name
+  cluster_name = include.root.locals.full_name
 }
 
 inputs = {
@@ -21,11 +23,11 @@ inputs = {
   tags = merge(
     include.root.locals.custom_tags,
     {
-      "kubernetes.io/cluster/${include.root.locals.full_name}" = "shared",
+      "kubernetes.io/cluster/${local.cluster_name}" = "shared",
     }
   )
 
-  name = include.root.locals.full_name
+  name = local.vpc_name
   cidr = local.vpc_cidr
   azs  = dependency.datasources.outputs.aws_availability_zones.names
 
@@ -33,19 +35,19 @@ inputs = {
   public_subnets  = [for k, v in slice(dependency.datasources.outputs.aws_availability_zones.names, 0, 3) : cidrsubnet(local.vpc_cidr, 3, k + 1)]
   private_subnets = [for k, v in slice(dependency.datasources.outputs.aws_availability_zones.names, 0, 3) : cidrsubnet(local.vpc_cidr, 3, k + 4)]
 
-  enable_ipv6                     = true
-  assign_ipv6_address_on_creation = true
-  public_subnet_ipv6_prefixes     = [0, 1, 2]
-  private_subnet_ipv6_prefixes    = [3, 4, 5]
-  intra_subnet_ipv6_prefixes      = [6, 7, 8]
+  enable_ipv6                                    = true
+  public_subnet_ipv6_prefixes                    = [0, 1, 2]
+  public_subnet_assign_ipv6_address_on_creation  = true
+  private_subnet_ipv6_prefixes                   = [3, 4, 5]
+  private_subnet_assign_ipv6_address_on_creation = true
+  intra_subnet_ipv6_prefixes                     = [6, 7, 8]
+  intra_subnet_assign_ipv6_address_on_creation   = true
 
   enable_nat_gateway = true
   single_nat_gateway = true
 
-  enable_dns_hostnames = true
-  enable_dns_support   = true
-
   manage_default_security_group = true
+  map_public_ip_on_launch       = true
 
   default_security_group_egress = [
     {
@@ -67,13 +69,15 @@ inputs = {
   ]
 
   public_subnet_tags = {
-    "kubernetes.io/cluster/${include.root.locals.full_name}" = "shared"
-    "kubernetes.io/role/elb"                                 = "1"
+    "kubernetes.io/cluster/${local.cluster_name}" = "shared"
+    "kubernetes.io/role/elb"                      = "1"
+    "karpenter.sh/discovery"                      = local.cluster_name
   }
 
   private_subnet_tags = {
-    "kubernetes.io/cluster/${include.root.locals.full_name}" = "shared"
-    "kubernetes.io/role/internal-elb"                        = "1"
+    "kubernetes.io/cluster/${local.cluster_name}" = "shared"
+    "kubernetes.io/role/internal-elb"             = "1"
+    "karpenter.sh/discovery"                      = local.cluster_name
   }
 
   enable_flow_log                                 = true

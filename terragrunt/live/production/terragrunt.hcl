@@ -18,6 +18,29 @@ remote_state {
   }
 }
 
+
+terraform {
+
+  # Example of tflint hook
+  #
+  #  before_hook "tflint" {
+  #    commands = ["apply", "plan"]
+  #    execute  = ["tflint"]
+  #  }
+
+  # Example of tfsec hook
+  # 
+  #  before_hook "tfsec" {
+  #    commands = ["plan"]
+  #    execute = [
+  #      "/bin/sh",
+  #      "-c",
+  #      "tfsec . --var-file terragrunt-debug.tfvars.json --config-file ${find_in_parent_folders(".tfsec.yaml")} --exclude-downloaded-modules --no-color 1>&2"
+  #    ]
+  #  }
+
+}
+
 locals {
   merged = merge(
     try(yamldecode(file(find_in_parent_folders("global_values.yaml"))), {}),
@@ -40,15 +63,8 @@ generate "provider-aws" {
   path      = "provider-aws.tf"
   if_exists = "overwrite_terragrunt"
   contents  = <<-EOF
-    variable "provider_default_tags" {
-      type = map
-      default = {}
-    }
     provider "aws" {
       region = "${local.merged.aws_region}"
-      default_tags {
-        tags = var.provider_default_tags
-      }
     }
   EOF
 }

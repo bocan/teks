@@ -16,8 +16,9 @@ include "eks" {
   merge_strategy = "deep"
 }
 
+
 terraform {
-  source = "github.com/particuleio/terraform-kubernetes-addons.git//modules/aws?ref=v11.4.0"
+  source = "github.com/particuleio/terraform-kubernetes-addons.git//modules/aws?ref=v14.9.0"
 }
 
 generate "provider-local" {
@@ -48,7 +49,7 @@ inputs = {
     values = "100000"
   }
 
-  cluster-name = dependency.eks.outputs.cluster_id
+  cluster-name = dependency.eks.outputs.cluster_name
 
   tags = merge(
     include.root.locals.custom_tags
@@ -56,6 +57,8 @@ inputs = {
 
   eks = {
     "cluster_oidc_issuer_url" = dependency.eks.outputs.cluster_oidc_issuer_url
+    "oidc_provider_arn"       = dependency.eks.outputs.oidc_provider_arn
+    "cluster_endpoint"        = dependency.eks.outputs.cluster_endpoint
   }
 
   aws-for-fluent-bit = {
@@ -69,6 +72,10 @@ inputs = {
     wait             = false
     use_encryption   = true
     use_kms          = true
+  }
+
+  aws-efs-csi-driver = {
+    enabled = true
   }
 
   aws-load-balancer-controller = {
@@ -89,6 +96,11 @@ inputs = {
     },
   }
 
+  karpenter = {
+    enabled      = true
+    iam_role_arn = dependency.eks.outputs.eks_managed_node_groups["unused"].iam_role_arn
+  }
+
   metrics-server = {
     enabled       = true
     allowed_cidrs = dependency.vpc.outputs.intra_subnets_cidr_blocks
@@ -100,14 +112,10 @@ inputs = {
   }
 
   tigera-operator = {
-    enabled = true
+    enabled = false
   }
 
   velero = {
-    enabled      = true
-    extra_values = <<-EXTRA_VALUES
-      nodeSelector:
-        kubernetes.io/arch: amd64
-      EXTRA_VALUES
+    enabled = false
   }
 }
